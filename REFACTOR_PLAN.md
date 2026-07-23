@@ -135,7 +135,9 @@ it describes is not necessarily describing it.
 - `CSCROLLPANEL_TRACE=1` — the real demo page traces
   `viewport=664x541 panel=(0,0,652x1178) bar=(652,0,12x541) content=1178 pos=0/637`, i.e.
   page width + strip = client width exactly.
-- **Not yet verified: the interactive pass.** Nothing about pixel appearance, the fade of
-  the thumb in and out under a real cursor, thumb dragging, trackpad smoothness, resize
-  re-flow or DPI has been confirmed by hand. That is the author's pass and it is the only
-  check on the half of this control the assertions cannot reach.
+- **The interactive pass has been run and passed** (2026-07-23, by the author): the thumb
+  revealing and hiding under a real cursor, focus holding it visible with the mouse away,
+  Tab scrolling controls into view, the wheel over both the page and an `EDIT`, thumb
+  dragging, the seam where the hidden strip meets the page, and resize re-flow. That pass is
+  the only check on the half of this control the assertions cannot reach, so it is what
+  closes this out.
