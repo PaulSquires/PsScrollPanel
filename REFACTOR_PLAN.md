@@ -130,7 +130,8 @@ it describes is not necessarily describing it.
 ## Verification status
 
 - Builds clean with `-w all`, zero warnings.
-- `CSCROLLPANEL_SELFTEST=1` — 49 assertions, all passing.
+- `CSCROLLPANEL_SELFTEST=1` — 48 assertions, all passing (counted from the output, not
+  inferred from a zero failure count).
 - `CSCROLLPANEL_TRACE=1` — the real demo page traces
   `viewport=664x541 panel=(0,0,652x1178) bar=(652,0,12x541) content=1178 pos=0/637`, i.e.
   page width + strip = client width exactly.

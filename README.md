@@ -175,5 +175,5 @@ fbc64.exe -i "C:\dev" main.bas
 
 | | |
 |---|---|
-| `CSCROLLPANEL_SELFTEST=1` | 49 assertions: strip/page geometry, clamping, the reveal truth table, `EnsureVisible` in all four cases, `AutoSizeContent`, wheel arithmetic including sub-notch accumulation, and the focus-into-view scroll driven through the real handler. |
+| `CSCROLLPANEL_SELFTEST=1` | 48 assertions: strip/page geometry, clamping, the reveal truth table, `EnsureVisible` in all four cases, `AutoSizeContent`, wheel arithmetic including sub-notch accumulation, and the focus-into-view scroll driven through the real handler. |
 | `CSCROLLPANEL_TRACE=1` | dumps every computed rect on each layout pass. |
