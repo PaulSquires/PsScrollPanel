@@ -20,6 +20,14 @@ never scrolls.
 
 ---
 
+## What it looks like
+
+![The CScrollPanel demo](CScrollPanel.png)
+
+A settings page taller than its viewport. The scrollbar **is not visible here, and that is correct** — the thumb appears only when the content overflows *and* the pointer is over the control or focus is inside the page. The strip it lives in stays reserved either way, so nothing on the page shifts when it appears. The host parents its controls to the panel, never to the container.
+
+---
+
 ## Requirements
 
 **Files to copy into your project:**
