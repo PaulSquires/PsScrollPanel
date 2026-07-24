@@ -1,6 +1,6 @@
 '    Owner-drawn scrolling panel control
 '
-'    A self-contained, per-instance control in the same vein as CListBox/CVScrollBar: it
+'    A self-contained, per-instance control in the same vein as PsListBox/PsVScrollBar: it
 '    owns its own window class and keeps all state per instance in the CWindow UserData
 '    area, so any number of instances can coexist.
 '
@@ -8,11 +8,11 @@
 '      A viewport onto a taller page of host-owned controls -- the settings dialog whose
 '      list of options is longer than one screen. Three windows:
 '
-'          CScrollPanel container HWND    WS_CLIPCHILDREN -- this is the viewport
+'          PsScrollPanel container HWND    WS_CLIPCHILDREN -- this is the viewport
 '          +-- hPanel (CWindow)           the PAGE. Taller than the viewport; the host
 '          |     +-- the host's controls  parents its controls HERE and lays them out in
 '          |                              PANEL coordinates, once
-'          +-- hScrollBar (CVScrollBar)   a reserved strip on the right edge
+'          +-- hScrollBar (PsVScrollBar)   a reserved strip on the right edge
 '
 '      Scrolling MOVES THE PANEL: SetWindowPos( hPanel, 0, -nPos, ... ). The children keep
 '      their panel-relative coordinates forever, the container's WS_CLIPCHILDREN does the
@@ -30,21 +30,21 @@
 
 #pragma once
 
-#include once "CBufferPaint.bi"
-#include once "CVScrollBar.bi"
+#include once "PsBufferPaint.bi"
+#include once "PsVScrollBar.bi"
 
 ' Reveal/focus poll timer. Timer ids are per-window, so every instance can share this one.
-' (&hCB10/&hCB11 belong to the CVScrollBar this control owns -- do not reuse them here.)
+' (&hCB10/&hCB11 belong to the PsVScrollBar this control owns -- do not reuse them here.)
 #define IDT_CSCROLLPANEL_REVEAL   &hCB30
-#define CSCROLLPANEL_REVEAL_MS    100
+#define PSSCROLLPANEL_REVEAL_MS    100
 
-#define CSCROLLPANEL_LINE_HEIGHT  20    ' default wheel unit, unscaled (DPI scaled at use)
+#define PSSCROLLPANEL_LINE_HEIGHT  20    ' default wheel unit, unscaled (DPI scaled at use)
 
 
 type SCP_PAINTINFO
     hScrollPanel as HWND                 ' the container, so the callback can query it
     hPanel       as HWND                 ' the window actually being painted
-    b            as CBufferPaint ptr     ' the panel's buffer for this repaint (no copy)
+    b            as PsBufferPaint ptr     ' the panel's buffer for this repaint (no copy)
     rcClient     as RECT                 ' the WHOLE page, not the visible slice
     nPos         as integer              ' current scroll offset, for content that cares
 end type
@@ -82,7 +82,7 @@ type SCP_PaintCallbackSub as sub( byval p as SCP_PAINTINFO ptr )
 ' WM_COMMAND / WM_NOTIFY / WM_HSCROLL / WM_VSCROLL from the host's own controls arrive at
 ' the PANEL, since it is their parent. They are offered here first and, if not claimed,
 ' FORWARDED to the container's parent -- so a host that already handles its controls in its
-' own WndProc keeps working unchanged when its page moves onto a CScrollPanel. Claim them
+' own WndProc keeps working unchanged when its page moves onto a PsScrollPanel. Claim them
 ' here only if you want them instead of, not as well as, that.
 type SCP_MessageCallbackFunc as function( byval m as SCP_MESSAGEINFO ptr ) as boolean
 
@@ -92,27 +92,27 @@ type SCP_MessageCallbackFunc as function( byval m as SCP_MESSAGEINFO ptr ) as bo
 ' back -- do not call GetClientRect(hPanel) in here and reason about a width that may be
 ' one call stale. Return the new content height in pixels, or 0 to leave it unchanged.
 '
-' Calling CScrollPanel_SetContentHeight from inside this callback is safe: the control is
+' Calling PsScrollPanel_SetContentHeight from inside this callback is safe: the control is
 ' in a layout pass and the setter records the value instead of starting another one.
 type SCP_LayoutCallbackFunc as function( byval hPanel as HWND, byval cxPanel as integer ) as integer
 
 ' The scroll position changed through USER action -- wheel, thumb drag, track paging, or
-' the focus-into-view scroll that follows a Tab. NOT fired for CScrollPanel_SetPos /
+' the focus-into-view scroll that follows a Tab. NOT fired for PsScrollPanel_SetPos /
 ' SetContentHeight / EnsureVisible called by the host, so a host can call those from inside
 ' this very callback without re-entering itself.
 type SCP_ScrollCallbackSub as sub( byval hScrollPanel as HWND, byval newPos as integer )
 
 
-type CSCROLLPANEL
+type PSSCROLLPANEL
     hWin           as HWND               ' the container / viewport
     hPanel         as HWND               ' the page
-    hScrollBar     as HWND               ' the CVScrollBar
+    hScrollBar     as HWND               ' the PsVScrollBar
     ' --- Scroll model. Both in PIXELS; nPos is the page's first visible row of pixels. ---
     nContentHeight as integer = 0
     nPos           as integer = 0
     ' --- Geometry inputs (unscaled; DPI applied at use) ---
     ScrollBarWidth as integer = CVSCROLL_DEFAULT_WIDTH
-    LineHeight     as integer = CSCROLLPANEL_LINE_HEIGHT
+    LineHeight     as integer = PSSCROLLPANEL_LINE_HEIGHT
     ' --- Interaction / policy ---
     bThumbShown    as boolean = false    ' what the reveal rule last decided
     bAutoScrollToFocus as boolean = true
@@ -125,7 +125,7 @@ type CSCROLLPANEL
     ' The one GDI resource this control owns: the brush handed back to WM_CTLCOLOR*.
     ' Recreated by SetColors, deleted at WM_NCDESTROY. NOT named hBrush -- FreeBASIC is
     ' case-insensitive, so a member called hBrush would shadow the TYPE name HBRUSH inside
-    ' every member procedure of this type (CSplitter's hBarCursor trap; see Learnings.md).
+    ' every member procedure of this type (PsSplitter's hBarCursor trap; see Learnings.md).
     hBackBrushObj  as HBRUSH
     PaintCallback    as SCP_PaintCallbackSub
     MessageCallback  as SCP_MessageCallbackFunc
@@ -149,17 +149,17 @@ end type
 
 ' The viewport is the container's client area. Both are read live rather than cached: the
 ' host resizes us whenever it likes and a stale copy would misplace the page.
-function CSCROLLPANEL.ViewportHeight() as integer
+function PSSCROLLPANEL.ViewportHeight() as integer
     dim as RECT rc : GetClientRect( this.hWin, @rc )
     return rc.bottom - rc.top
 end function
 
-function CSCROLLPANEL.ViewportWidth() as integer
+function PSSCROLLPANEL.ViewportWidth() as integer
     dim as RECT rc : GetClientRect( this.hWin, @rc )
     return rc.right - rc.left
 end function
 
-function CSCROLLPANEL.ScaledBarWidth() as integer
+function PSSCROLLPANEL.ScaledBarWidth() as integer
     dim pWindow as CWindow ptr = AfxCWindowPtr( this.hWin )
     if pWindow then return pWindow->ScaleX( this.ScrollBarWidth )
     return this.ScrollBarWidth
@@ -167,7 +167,7 @@ end function
 
 ' The strip is reserved whether or not the thumb is currently shown -- that is what stops
 ' host content jumping sideways as the mouse comes and goes.
-function CSCROLLPANEL.PanelWidth() as integer
+function PSSCROLLPANEL.PanelWidth() as integer
     dim as integer w = this.ViewportWidth() - this.ScaledBarWidth()
     if w < 0 then w = 0
     return w
@@ -175,31 +175,31 @@ end function
 
 ' A page shorter than the viewport is stretched to fill it, so the container's own fill can
 ' only ever show through in the bar strip.
-function CSCROLLPANEL.PanelHeight() as integer
+function PSSCROLLPANEL.PanelHeight() as integer
     dim as integer h = this.nContentHeight
     if h < this.ViewportHeight() then h = this.ViewportHeight()
     return h
 end function
 
-function CSCROLLPANEL.MaxPos() as integer
+function PSSCROLLPANEL.MaxPos() as integer
     dim as integer m = this.nContentHeight - this.ViewportHeight()
     if m < 0 then m = 0
     return m
 end function
 
-function CSCROLLPANEL.ClampPos( byval n as integer ) as integer
+function PSSCROLLPANEL.ClampPos( byval n as integer ) as integer
     if n < 0 then n = 0
     if n > this.MaxPos() then n = this.MaxPos()
     return n
 end function
 
 ' Is there anything to scroll? A pure RANGE question, deliberately independent of the
-' scrollbar's own geometry -- see the same reasoning in CVScrollBar.NeedsThumb.
-function CSCROLLPANEL.NeedsThumb() as boolean
+' scrollbar's own geometry -- see the same reasoning in PsVScrollBar.NeedsThumb.
+function PSSCROLLPANEL.NeedsThumb() as boolean
     return (this.MaxPos() > 0)
 end function
 
-function CSCROLLPANEL.ScaledLineHeight() as integer
+function PSSCROLLPANEL.ScaledLineHeight() as integer
     dim as integer h = this.LineHeight
     dim pWindow as CWindow ptr = AfxCWindowPtr( this.hWin )
     if pWindow then h = pWindow->ScaleY( this.LineHeight )
@@ -207,7 +207,7 @@ function CSCROLLPANEL.ScaledLineHeight() as integer
     return h
 end function
 
-function CSCROLLPANEL.FocusIsInside() as boolean
+function PSSCROLLPANEL.FocusIsInside() as boolean
     dim as HWND hFocus = GetFocus()
     if hFocus = 0 then return false
     if hFocus = this.hPanel then return true
@@ -216,13 +216,13 @@ end function
 
 ' A geometric test against the container's client rect, so the host's child controls are
 ' irrelevant -- the cursor sitting on an EDIT box still counts as "over the control".
-function CSCROLLPANEL.MouseIsOver() as boolean
+function PSSCROLLPANEL.MouseIsOver() as boolean
     dim as RECT rc : GetClientRect( this.hWin, @rc )
     return isMouseOverRECT( this.hWin, rc )
 end function
 
 ' The ONE place the page is moved. Width and height come from the model, y is the scroll.
-sub CSCROLLPANEL.ApplyScroll()
+sub PSSCROLLPANEL.ApplyScroll()
     if this.hPanel = 0 then exit sub
     SetWindowPos( this.hPanel, NULL, _
                   0, -this.nPos, this.PanelWidth(), this.PanelHeight(), _
@@ -240,7 +240,7 @@ end sub
 '
 ' Either of the last two alone reveals the thumb; a keyboard-only user is not left guessing
 ' where they are on the page.
-declare function CScrollPanel_ShouldShow( byval bNeeds as boolean, _
+declare function PsScrollPanel_ShouldShow( byval bNeeds as boolean, _
                                           byval bMouse as boolean, _
                                           byval bFocus as boolean ) as boolean
 
@@ -250,7 +250,7 @@ declare function CScrollPanel_ShouldShow( byval bNeeds as boolean, _
 ' ========================================================================================
 '
 ' THE CONTROL HANDLE
-'   Every CScrollPanel_* function takes the handle returned by CScrollPanel_Create().
+'   Every PsScrollPanel_* function takes the handle returned by PsScrollPanel_Create().
 '   It is a real HWND on purpose (not an opaque type): callers legitimately need to treat
 '   the control as a window, e.g. SetWindowPos() to place and size it.
 '
@@ -264,13 +264,13 @@ declare function CScrollPanel_ShouldShow( byval bNeeds as boolean, _
 ' SetWindowPos. CtrlID becomes the container's id (GWLP_ID); the panel and the scrollbar
 ' take CtrlID + 1 and CtrlID + 2.
 '
-' THE FIRST THING TO DO AFTER Create IS CScrollPanel_GetPanel: the host's controls are
+' THE FIRST THING TO DO AFTER Create IS PsScrollPanel_GetPanel: the host's controls are
 ' parented to the PANEL, never to the container. A control created on the container itself
 ' would sit over the viewport and never scroll.
 ' ----------------------------------------------------------------------------------------
-declare function CScrollPanel_Create( byval hWndParent as HWND, byval CtrlID as integer ) as HWND
-declare function CScrollPanel_GetPanel( byval hScp as HWND ) as HWND
-declare function CScrollPanel_GetScrollBar( byval hScp as HWND ) as HWND
+declare function PsScrollPanel_Create( byval hWndParent as HWND, byval CtrlID as integer ) as HWND
+declare function PsScrollPanel_GetPanel( byval hScp as HWND ) as HWND
+declare function PsScrollPanel_GetScrollBar( byval hScp as HWND ) as HWND
 
 ' ----------------------------------------------------------------------------------------
 ' Content and scrolling. All values are PIXELS in PAGE coordinates.
@@ -289,34 +289,34 @@ declare function CScrollPanel_GetScrollBar( byval hScp as HWND ) as HWND
 '   Recalc             force a full layout pass -- the layout callback, the page geometry
 '                      and the scrollbar sync. Call it after adding or moving children.
 ' ----------------------------------------------------------------------------------------
-declare sub      CScrollPanel_SetContentHeight( byval hScp as HWND, byval nHeight as integer )
-declare function CScrollPanel_GetContentHeight( byval hScp as HWND ) as integer
-declare function CScrollPanel_AutoSizeContent( byval hScp as HWND, byval bottomPadding as integer = 0 ) as integer
-declare function CScrollPanel_GetPos( byval hScp as HWND ) as integer
-declare sub      CScrollPanel_SetPos( byval hScp as HWND, byval nPosition as integer )
-declare function CScrollPanel_ScrollBy( byval hScp as HWND, byval nDelta as integer ) as boolean
-declare function CScrollPanel_EnsureVisible( byval hScp as HWND, byval hChild as HWND, byval nMargin as integer = 0 ) as boolean
-declare function CScrollPanel_GetViewportHeight( byval hScp as HWND ) as integer
-declare function CScrollPanel_GetPanelWidth( byval hScp as HWND ) as integer
-declare sub      CScrollPanel_Recalc( byval hScp as HWND )
+declare sub      PsScrollPanel_SetContentHeight( byval hScp as HWND, byval nHeight as integer )
+declare function PsScrollPanel_GetContentHeight( byval hScp as HWND ) as integer
+declare function PsScrollPanel_AutoSizeContent( byval hScp as HWND, byval bottomPadding as integer = 0 ) as integer
+declare function PsScrollPanel_GetPos( byval hScp as HWND ) as integer
+declare sub      PsScrollPanel_SetPos( byval hScp as HWND, byval nPosition as integer )
+declare function PsScrollPanel_ScrollBy( byval hScp as HWND, byval nDelta as integer ) as boolean
+declare function PsScrollPanel_EnsureVisible( byval hScp as HWND, byval hChild as HWND, byval nMargin as integer = 0 ) as boolean
+declare function PsScrollPanel_GetViewportHeight( byval hScp as HWND ) as integer
+declare function PsScrollPanel_GetPanelWidth( byval hScp as HWND ) as integer
+declare sub      PsScrollPanel_Recalc( byval hScp as HWND )
 
 ' ----------------------------------------------------------------------------------------
 ' Appearance.
 '   SetColors           the page fill AND the text/background handed to the host's controls
 '                       through WM_CTLCOLOR*. One call themes a whole settings page of
 '                       plain labels and checkboxes.
-'   SetScrollBarColors  forwarded straight to the owned CVScrollBar. Its BACK color defaults
+'   SetScrollBarColors  forwarded straight to the owned PsVScrollBar. Its BACK color defaults
 '                       to the panel's, which is what makes the hidden state seamless.
 '   SetScrollBarWidth   unscaled; this is the width of the reserved strip.
 '   SetLineHeight       unscaled; the pixel value of one "line" for the wheel (see below).
 '   SetFont             applied to every existing child of the panel (WM_SETFONT). The HOST
 '                       keeps ownership of the HFONT -- this control never deletes it.
 ' ----------------------------------------------------------------------------------------
-declare sub      CScrollPanel_SetColors( byval hScp as HWND, byval backclr as COLORREF, byval foreclr as COLORREF )
-declare sub      CScrollPanel_SetScrollBarColors( byval hScp as HWND, byval backclr as COLORREF, byval foreclr as COLORREF, byval foreclrhot as COLORREF )
-declare sub      CScrollPanel_SetScrollBarWidth( byval hScp as HWND, byval nWidth as integer )
-declare sub      CScrollPanel_SetLineHeight( byval hScp as HWND, byval nHeight as integer )
-declare sub      CScrollPanel_SetFont( byval hScp as HWND, byval hFont as HFONT )
+declare sub      PsScrollPanel_SetColors( byval hScp as HWND, byval backclr as COLORREF, byval foreclr as COLORREF )
+declare sub      PsScrollPanel_SetScrollBarColors( byval hScp as HWND, byval backclr as COLORREF, byval foreclr as COLORREF, byval foreclrhot as COLORREF )
+declare sub      PsScrollPanel_SetScrollBarWidth( byval hScp as HWND, byval nWidth as integer )
+declare sub      PsScrollPanel_SetLineHeight( byval hScp as HWND, byval nHeight as integer )
+declare sub      PsScrollPanel_SetFont( byval hScp as HWND, byval hFont as HFONT )
 
 ' ----------------------------------------------------------------------------------------
 ' Behaviour and state.
@@ -328,9 +328,9 @@ declare sub      CScrollPanel_SetFont( byval hScp as HWND, byval hFont as HFONT 
 '                         back under them.
 '   IsThumbVisible        what the reveal rule currently says.
 ' ----------------------------------------------------------------------------------------
-declare sub      CScrollPanel_SetAutoScrollToFocus( byval hScp as HWND, byval bEnable as boolean )
-declare function CScrollPanel_GetAutoScrollToFocus( byval hScp as HWND ) as boolean
-declare function CScrollPanel_IsThumbVisible( byval hScp as HWND ) as boolean
+declare sub      PsScrollPanel_SetAutoScrollToFocus( byval hScp as HWND, byval bEnable as boolean )
+declare function PsScrollPanel_GetAutoScrollToFocus( byval hScp as HWND ) as boolean
+declare function PsScrollPanel_IsThumbVisible( byval hScp as HWND ) as boolean
 
 ' ----------------------------------------------------------------------------------------
 ' MOUSE WHEEL / TRACKPAD
@@ -343,18 +343,18 @@ declare function CScrollPanel_IsThumbVisible( byval hScp as HWND ) as boolean
 ' gesture it received itself. Pass the ALREADY-EXTRACTED signed delta:
 '
 '     case WM_MOUSEWHEEL
-'         CScrollPanel_HandleWheelDelta( hScp, cast(short, hiword(wParam)) )
+'         PsScrollPanel_HandleWheelDelta( hScp, cast(short, hiword(wParam)) )
 '
 ' The cast matters: loword/hiword yield UNSIGNED words, so a delta read without it turns
 ' ~-120 into ~65416 and the direction silently inverts (see C:\dev\Learnings.md).
 '
 ' THE UNIT. This control's range is in PIXELS, but the system's wheel setting
 ' (SPI_GETWHEELSCROLLLINES) counts LINES. Feeding that number to a pixel range gives three
-' pixels a notch and a gesture that feels dead -- the exact CHScrollBar bug in Learnings.md.
+' pixels a notch and a gesture that feels dead -- the exact PsHScrollBar bug in Learnings.md.
 ' So the conversion happens here: one notch = system lines x SetLineHeight (default 20,
 ' DPI-scaled). Set LineHeight to your settings row's pitch and a notch moves whole rows.
 ' ----------------------------------------------------------------------------------------
-declare function CScrollPanel_HandleWheelDelta( byval hScp as HWND, byval nDelta as integer ) as boolean
+declare function PsScrollPanel_HandleWheelDelta( byval hScp as HWND, byval nDelta as integer ) as boolean
 
 ' ----------------------------------------------------------------------------------------
 ' Callbacks. See the type declarations above for each signature and contract.
@@ -364,7 +364,7 @@ declare function CScrollPanel_HandleWheelDelta( byval hScp as HWND, byval nDelta
 '   LayoutCallback    - the viewport resized: re-flow, return the new content height.
 '   ScrollCallback    - the USER scrolled.
 ' ----------------------------------------------------------------------------------------
-declare sub      CScrollPanel_SetPaintCallback( byval hScp as HWND, byval usersub as SCP_PaintCallbackSub )
-declare sub      CScrollPanel_SetMessageCallback( byval hScp as HWND, byval userfunc as SCP_MessageCallbackFunc )
-declare sub      CScrollPanel_SetLayoutCallback( byval hScp as HWND, byval userfunc as SCP_LayoutCallbackFunc )
-declare sub      CScrollPanel_SetScrollCallback( byval hScp as HWND, byval usersub as SCP_ScrollCallbackSub )
+declare sub      PsScrollPanel_SetPaintCallback( byval hScp as HWND, byval usersub as SCP_PaintCallbackSub )
+declare sub      PsScrollPanel_SetMessageCallback( byval hScp as HWND, byval userfunc as SCP_MessageCallbackFunc )
+declare sub      PsScrollPanel_SetLayoutCallback( byval hScp as HWND, byval userfunc as SCP_LayoutCallbackFunc )
+declare sub      PsScrollPanel_SetScrollCallback( byval hScp as HWND, byval usersub as SCP_ScrollCallbackSub )

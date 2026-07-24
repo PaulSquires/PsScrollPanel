@@ -1,8 +1,8 @@
 #include once "frmMain.bi"
-#include once "CBufferPaint.bi"
+#include once "PsBufferPaint.bi"
 
 ' ----------------------------------------------------------------------------------------
-' Harness model: a settings page longer than the window, hosted in a CScrollPanel.
+' Harness model: a settings page longer than the window, hosted in a PsScrollPanel.
 '
 '     +-----------------------------------------------+
 '     |  form background (a different colour, so the  |
@@ -18,7 +18,7 @@
 '     +-----------------------------------------------+
 '
 ' Everything on the page is a PLAIN Win32 control -- STATIC, BUTTON, EDIT -- parented to
-' CScrollPanel_GetPanel(). They are laid out ONCE per resize, in page coordinates, by the
+' PsScrollPanel_GetPanel(). They are laid out ONCE per resize, in page coordinates, by the
 ' layout callback; scrolling never touches them again.
 ' ----------------------------------------------------------------------------------------
 #define PAGE_INSET       20      ' gap between the form's edge and the control, unscaled
@@ -245,8 +245,8 @@ end function
 sub ScrollPanel_Scroll( byval hScrollPanel as HWND, byval newPos as integer )
     if gQuietScroll then return
     dim as string s = "scroll -> pos=" & str(newPos) & _
-                      "  (content=" & str(CScrollPanel_GetContentHeight(hScrollPanel)) & _
-                      "  viewport=" & str(CScrollPanel_GetViewportHeight(hScrollPanel)) & ")"
+                      "  (content=" & str(PsScrollPanel_GetContentHeight(hScrollPanel)) & _
+                      "  viewport=" & str(PsScrollPanel_GetViewportHeight(hScrollPanel)) & ")"
     print s
 end sub
 
@@ -276,7 +276,7 @@ end sub
 ' Process WM_PAINT message for window/dialog: frmMain
 ' ========================================================================================
 function frmMain_OnPaint( byval hwnd as HWND ) as LRESULT
-    dim as CBufferPaint b
+    dim as PsBufferPaint b
     b.BeginDoubleBuffer(hwnd)
     b.SetBackColor( theme.BackColorPanel )
     b.PaintClientRect()
@@ -286,9 +286,9 @@ end function
 
 
 ' ========================================================================================
-' Geometry / behaviour self-test (run with CSCROLLPANEL_SELFTEST=1).
+' Geometry / behaviour self-test (run with PSSCROLLPANEL_SELFTEST=1).
 '
-' Every assertion runs against a SECOND, throwaway CScrollPanel created for the test and
+' Every assertion runs against a SECOND, throwaway PsScrollPanel created for the test and
 ' never shown: it starts empty, so its page geometry is exactly what the test puts there
 ' and the demo's own 30 rows cannot skew a measurement. A hidden window still has a real
 ' rect, so SetWindowPos / GetWindowRect / MapWindowPoints all measure truthfully.
@@ -309,14 +309,14 @@ end sub
 ' lives in, so the top edge must read -pos.
 function SelfTest_PanelRect( byval hScp as HWND ) as RECT
     dim as RECT rc
-    GetWindowRect( CScrollPanel_GetPanel(hScp), @rc )
+    GetWindowRect( PsScrollPanel_GetPanel(hScp), @rc )
     MapWindowPoints( HWND_DESKTOP, hScp, cast( POINT ptr, @rc ), 2 )
     return rc
 end function
 
 function SelfTest_BarRect( byval hScp as HWND ) as RECT
     dim as RECT rc
-    GetWindowRect( CScrollPanel_GetScrollBar(hScp), @rc )
+    GetWindowRect( PsScrollPanel_GetScrollBar(hScp), @rc )
     MapWindowPoints( HWND_DESKTOP, hScp, cast( POINT ptr, @rc ), 2 )
     return rc
 end function
@@ -336,46 +336,46 @@ end function
 
 sub frmMain_RunSelfTest()
     print ""
-    print "=== CScrollPanel self-test ==="
+    print "=== PsScrollPanel self-test ==="
 
     gQuietScroll = true
 
     dim pWindow as CWindow ptr = AfxCWindowPtr(HWND_FRMMAIN)
-    dim as HWND hT = CScrollPanel_Create( HWND_FRMMAIN, IDC_FRMMAIN_TESTPANEL )
-    CScrollPanel_SetScrollCallback( hT, @ScrollPanel_Scroll )
+    dim as HWND hT = PsScrollPanel_Create( HWND_FRMMAIN, IDC_FRMMAIN_TESTPANEL )
+    PsScrollPanel_SetScrollCallback( hT, @ScrollPanel_Scroll )
     SetWindowPos( hT, 0, 0, 0, 400, 300, SWP_NOZORDER )     ' never shown
 
-    dim as HWND hPanel = CScrollPanel_GetPanel(hT)
-    dim as HWND hSB    = CScrollPanel_GetScrollBar(hT)
-    dim as integer sbW = 400 - CScrollPanel_GetPanelWidth(hT)
+    dim as HWND hPanel = PsScrollPanel_GetPanel(hT)
+    dim as HWND hSB    = PsScrollPanel_GetScrollBar(hT)
+    dim as integer sbW = 400 - PsScrollPanel_GetPanelWidth(hT)
 
     ' ---- the strip is reserved, and the page gets exactly the rest ----------------------
     SelfTest_Check( "viewport height = client height", _
-        CScrollPanel_GetViewportHeight(hT) = 300, _
-        "viewport=" & str(CScrollPanel_GetViewportHeight(hT)) )
+        PsScrollPanel_GetViewportHeight(hT) = 300, _
+        "viewport=" & str(PsScrollPanel_GetViewportHeight(hT)) )
 
     dim as RECT rcBar = SelfTest_BarRect(hT)
     SelfTest_Check( "page width + bar width = client width", _
-        CScrollPanel_GetPanelWidth(hT) + (rcBar.right - rcBar.left) = 400, _
-        "page=" & str(CScrollPanel_GetPanelWidth(hT)) & " bar=" & str(rcBar.right - rcBar.left) )
+        PsScrollPanel_GetPanelWidth(hT) + (rcBar.right - rcBar.left) = 400, _
+        "page=" & str(PsScrollPanel_GetPanelWidth(hT)) & " bar=" & str(rcBar.right - rcBar.left) )
     SelfTest_Check( "bar sits at the right edge, full height", _
-        (rcBar.left = CScrollPanel_GetPanelWidth(hT)) andalso (rcBar.right = 400) andalso _
+        (rcBar.left = PsScrollPanel_GetPanelWidth(hT)) andalso (rcBar.right = 400) andalso _
         (rcBar.top = 0) andalso (rcBar.bottom = 300), _
         "bar=(" & str(rcBar.left) & "," & str(rcBar.top) & ")-(" & str(rcBar.right) & _
         "," & str(rcBar.bottom) & ")" )
 
     ' ---- a page shorter than the viewport is stretched to fill it -----------------------
-    CScrollPanel_SetContentHeight( hT, 120 )
+    PsScrollPanel_SetContentHeight( hT, 120 )
     dim as RECT rcP = SelfTest_PanelRect(hT)
     SelfTest_Check( "short page is stretched to the viewport", _
         (rcP.bottom - rcP.top) = 300, "page h=" & str(rcP.bottom - rcP.top) )
-    SelfTest_Check( "short page cannot scroll", CScrollPanel_GetPos(hT) = 0, _
-        "pos=" & str(CScrollPanel_GetPos(hT)) )
-    SelfTest_Check( "short page hides the thumb", CScrollPanel_IsThumbVisible(hT) = false, _
-        "visible=" & str(CScrollPanel_IsThumbVisible(hT)) )
+    SelfTest_Check( "short page cannot scroll", PsScrollPanel_GetPos(hT) = 0, _
+        "pos=" & str(PsScrollPanel_GetPos(hT)) )
+    SelfTest_Check( "short page hides the thumb", PsScrollPanel_IsThumbVisible(hT) = false, _
+        "visible=" & str(PsScrollPanel_IsThumbVisible(hT)) )
 
     ' ---- a real page --------------------------------------------------------------------
-    CScrollPanel_SetContentHeight( hT, 1000 )
+    PsScrollPanel_SetContentHeight( hT, 1000 )
     rcP = SelfTest_PanelRect(hT)
     SelfTest_Check( "page height = content height", (rcP.bottom - rcP.top) = 1000, _
         "page h=" & str(rcP.bottom - rcP.top) )
@@ -385,20 +385,20 @@ sub frmMain_RunSelfTest()
     SelfTest_Check( "page starts at the top", rcP.top = 0, "top=" & str(rcP.top) )
 
     ' ---- position: the page's top edge IS -pos ------------------------------------------
-    CScrollPanel_SetPos( hT, 200 )
+    PsScrollPanel_SetPos( hT, 200 )
     rcP = SelfTest_PanelRect(hT)
-    SelfTest_Check( "SetPos -> GetPos round-trip", CScrollPanel_GetPos(hT) = 200, _
-        "pos=" & str(CScrollPanel_GetPos(hT)) )
+    SelfTest_Check( "SetPos -> GetPos round-trip", PsScrollPanel_GetPos(hT) = 200, _
+        "pos=" & str(PsScrollPanel_GetPos(hT)) )
     SelfTest_Check( "page top = -pos", rcP.top = -200, "top=" & str(rcP.top) )
-    SelfTest_Check( "scrollbar mirrors the position", CVScrollBar_GetPos(hSB) = 200, _
-        "bar pos=" & str(CVScrollBar_GetPos(hSB)) )
+    SelfTest_Check( "scrollbar mirrors the position", PsVScrollBar_GetPos(hSB) = 200, _
+        "bar pos=" & str(PsVScrollBar_GetPos(hSB)) )
 
-    CScrollPanel_SetPos( hT, 99999 )
-    SelfTest_Check( "SetPos clamps to content - viewport", CScrollPanel_GetPos(hT) = 700, _
-        "pos=" & str(CScrollPanel_GetPos(hT)) & " expected=700" )
-    CScrollPanel_SetPos( hT, -50 )
-    SelfTest_Check( "SetPos clamps at zero", CScrollPanel_GetPos(hT) = 0, _
-        "pos=" & str(CScrollPanel_GetPos(hT)) )
+    PsScrollPanel_SetPos( hT, 99999 )
+    SelfTest_Check( "SetPos clamps to content - viewport", PsScrollPanel_GetPos(hT) = 700, _
+        "pos=" & str(PsScrollPanel_GetPos(hT)) & " expected=700" )
+    PsScrollPanel_SetPos( hT, -50 )
+    SelfTest_Check( "SetPos clamps at zero", PsScrollPanel_GetPos(hT) = 0, _
+        "pos=" & str(PsScrollPanel_GetPos(hT)) )
 
     ' NOTE for anyone adding assertions below: fbc does NOT evaluate call arguments left to
     ' right, so a SelfTest_Check whose bOK expression scrolls and whose sDetail then reads
@@ -408,89 +408,89 @@ sub frmMain_RunSelfTest()
     dim as boolean bMoved
     dim as integer nGot
 
-    CScrollPanel_SetPos( hT, 400 )
-    bMoved = CScrollPanel_ScrollBy( hT, -150 )
-    nGot   = CScrollPanel_GetPos(hT)
+    PsScrollPanel_SetPos( hT, 400 )
+    bMoved = PsScrollPanel_ScrollBy( hT, -150 )
+    nGot   = PsScrollPanel_GetPos(hT)
     SelfTest_Check( "ScrollBy moves relative", bMoved andalso (nGot = 250), _
         "pos=" & str(nGot) & " expected=250" )
 
-    CScrollPanel_ScrollBy( hT, -9999 )
-    bMoved = CScrollPanel_ScrollBy( hT, -10 )
-    nGot   = CScrollPanel_GetPos(hT)
+    PsScrollPanel_ScrollBy( hT, -9999 )
+    bMoved = PsScrollPanel_ScrollBy( hT, -10 )
+    nGot   = PsScrollPanel_GetPos(hT)
     SelfTest_Check( "ScrollBy at the top reports no move", _
         (bMoved = false) andalso (nGot = 0), "moved=" & str(bMoved) & " pos=" & str(nGot) )
 
     ' ---- a shrinking page must not strand the position past the end ---------------------
-    CScrollPanel_SetPos( hT, 700 )
-    CScrollPanel_SetContentHeight( hT, 400 )
+    PsScrollPanel_SetPos( hT, 700 )
+    PsScrollPanel_SetContentHeight( hT, 400 )
     SelfTest_Check( "shrinking the content re-clamps the position", _
-        CScrollPanel_GetPos(hT) = 100, _
-        "pos=" & str(CScrollPanel_GetPos(hT)) & " expected=100 (400-300)" )
+        PsScrollPanel_GetPos(hT) = 100, _
+        "pos=" & str(PsScrollPanel_GetPos(hT)) & " expected=100 (400-300)" )
     rcP = SelfTest_PanelRect(hT)
     SelfTest_Check( "and the page followed it", rcP.top = -100, "top=" & str(rcP.top) )
 
     ' ---- the reveal rule, as a truth table ----------------------------------------------
     SelfTest_Check( "reveal: nothing to scroll -> hidden (0,0,0)", _
-        CScrollPanel_ShouldShow(false, false, false) = false, "" )
+        PsScrollPanel_ShouldShow(false, false, false) = false, "" )
     SelfTest_Check( "reveal: nothing to scroll, mouse over -> hidden (0,1,0)", _
-        CScrollPanel_ShouldShow(false, true, false) = false, "" )
+        PsScrollPanel_ShouldShow(false, true, false) = false, "" )
     SelfTest_Check( "reveal: nothing to scroll, focused -> hidden (0,0,1)", _
-        CScrollPanel_ShouldShow(false, false, true) = false, "" )
+        PsScrollPanel_ShouldShow(false, false, true) = false, "" )
     SelfTest_Check( "reveal: nothing to scroll, both -> hidden (0,1,1)", _
-        CScrollPanel_ShouldShow(false, true, true) = false, "" )
+        PsScrollPanel_ShouldShow(false, true, true) = false, "" )
     SelfTest_Check( "reveal: scrollable, idle -> hidden (1,0,0)", _
-        CScrollPanel_ShouldShow(true, false, false) = false, "" )
+        PsScrollPanel_ShouldShow(true, false, false) = false, "" )
     SelfTest_Check( "reveal: mouse alone reveals (1,1,0)", _
-        CScrollPanel_ShouldShow(true, true, false) = true, "" )
+        PsScrollPanel_ShouldShow(true, true, false) = true, "" )
     SelfTest_Check( "reveal: focus alone reveals (1,0,1)", _
-        CScrollPanel_ShouldShow(true, false, true) = true, "" )
+        PsScrollPanel_ShouldShow(true, false, true) = true, "" )
     SelfTest_Check( "reveal: both reveal (1,1,1)", _
-        CScrollPanel_ShouldShow(true, true, true) = true, "" )
+        PsScrollPanel_ShouldShow(true, true, true) = true, "" )
 
     ' ---- EnsureVisible: the minimum move ------------------------------------------------
-    CScrollPanel_SetContentHeight( hT, 1000 )
+    PsScrollPanel_SetContentHeight( hT, 1000 )
     dim as HWND hProbe = SelfTest_MakeProbe( hPanel, 800, 30 )
 
-    CScrollPanel_SetPos( hT, 0 )
-    bMoved = CScrollPanel_EnsureVisible( hT, hProbe )
-    nGot   = CScrollPanel_GetPos(hT)
+    PsScrollPanel_SetPos( hT, 0 )
+    bMoved = PsScrollPanel_EnsureVisible( hT, hProbe )
+    nGot   = PsScrollPanel_GetPos(hT)
     SelfTest_Check( "EnsureVisible scrolls down to reveal the bottom edge", _
         bMoved andalso (nGot = 530), "pos=" & str(nGot) & " expected=530 (830-300)" )
 
     ' Above the viewport. The probe is at 800, so the viewport has to start BELOW it, which
     ' this page (max pos 700) cannot do -- hence a second, higher probe.
     dim as HWND hHigh = SelfTest_MakeProbe( hPanel, 100, 30 )
-    CScrollPanel_SetPos( hT, 500 )
-    bMoved = CScrollPanel_EnsureVisible( hT, hHigh )
-    nGot   = CScrollPanel_GetPos(hT)
+    PsScrollPanel_SetPos( hT, 500 )
+    bMoved = PsScrollPanel_EnsureVisible( hT, hHigh )
+    nGot   = PsScrollPanel_GetPos(hT)
     SelfTest_Check( "EnsureVisible scrolls up to reveal the top edge", _
         bMoved andalso (nGot = 100), "pos=" & str(nGot) & " expected=100 (child top)" )
     DestroyWindow( hHigh )
 
-    CScrollPanel_SetPos( hT, 600 )
-    bMoved = CScrollPanel_EnsureVisible( hT, hProbe )
-    nGot   = CScrollPanel_GetPos(hT)
+    PsScrollPanel_SetPos( hT, 600 )
+    bMoved = PsScrollPanel_EnsureVisible( hT, hProbe )
+    nGot   = PsScrollPanel_GetPos(hT)
     SelfTest_Check( "EnsureVisible on an already-visible child does nothing", _
         (bMoved = false) andalso (nGot = 600), _
         "pos=" & str(nGot) & " (child 800..830 sits inside 600..900)" )
 
-    CScrollPanel_SetPos( hT, 0 )
-    bMoved = CScrollPanel_EnsureVisible( hT, hProbe, 40 )
-    nGot   = CScrollPanel_GetPos(hT)
+    PsScrollPanel_SetPos( hT, 0 )
+    bMoved = PsScrollPanel_EnsureVisible( hT, hProbe, 40 )
+    nGot   = PsScrollPanel_GetPos(hT)
     SelfTest_Check( "EnsureVisible applies the margin", _
         bMoved andalso (nGot = 570), "pos=" & str(nGot) & " expected=570 (830+40-300)" )
 
     DestroyWindow( hProbe )
     dim as HWND hTall = SelfTest_MakeProbe( hPanel, 100, 400 )
-    CScrollPanel_SetPos( hT, 0 )
-    bMoved = CScrollPanel_EnsureVisible( hT, hTall )
-    nGot   = CScrollPanel_GetPos(hT)
+    PsScrollPanel_SetPos( hT, 0 )
+    bMoved = PsScrollPanel_EnsureVisible( hT, hTall )
+    nGot   = PsScrollPanel_GetPos(hT)
     SelfTest_Check( "EnsureVisible top-aligns a child taller than the viewport", _
         bMoved andalso (nGot = 100), _
         "pos=" & str(nGot) & " expected=100 (child 100..500, viewport 300)" )
     DestroyWindow( hTall )
 
-    bMoved = CScrollPanel_EnsureVisible( hT, HWND_FRMMAIN )
+    bMoved = PsScrollPanel_EnsureVisible( hT, HWND_FRMMAIN )
     SelfTest_Check( "EnsureVisible rejects a window that is not ours", bMoved = false, _
         "moved=" & str(bMoved) )
 
@@ -505,15 +505,15 @@ sub frmMain_RunSelfTest()
     ' still building its page. IsWindowVisible would report every one of these children as
     ' invisible and measure the page as zero; the child's own WS_VISIBLE bit is the right
     ' question, and this is the assertion that says so.
-    dim as integer nAuto = CScrollPanel_AutoSizeContent( hT, 20 )
-    nGot = CScrollPanel_GetContentHeight(hT)
+    dim as integer nAuto = PsScrollPanel_AutoSizeContent( hT, 20 )
+    nGot = PsScrollPanel_GetContentHeight(hT)
     SelfTest_Check( "AutoSizeContent = deepest visible child + padding", nAuto = 520, _
         "auto=" & str(nAuto) & " expected=520 (500+20)" )
     SelfTest_Check( "AutoSizeContent ignores hidden children", nGot = 520, _
         "content=" & str(nGot) & " (a hidden child sits at 900..940)" )
 
     ShowWindow( hHidden, SW_SHOW )
-    nAuto = CScrollPanel_AutoSizeContent( hT, 0 )
+    nAuto = PsScrollPanel_AutoSizeContent( hT, 0 )
     SelfTest_Check( "AutoSizeContent sees it once shown", nAuto = 940, _
         "auto=" & str(nAuto) & " expected=940" )
 
@@ -523,8 +523,8 @@ sub frmMain_RunSelfTest()
     ' Range units are pixels, so one notch must be system-lines x line-height. The expected
     ' value is derived with the same conversion the control uses rather than hardcoded --
     ' the system setting and the DPI are both outside our control.
-    CScrollPanel_SetContentHeight( hT, 1000 )
-    CScrollPanel_SetLineHeight( hT, 20 )
+    PsScrollPanel_SetContentHeight( hT, 1000 )
+    PsScrollPanel_SetLineHeight( hT, 20 )
     dim as integer nLine = 20
     if pWindow then nLine = pWindow->ScaleY(20)
 
@@ -537,48 +537,48 @@ sub frmMain_RunSelfTest()
         nStep = cast(integer, sysval) * nLine
     end if
 
-    CScrollPanel_SetPos( hT, 0 )
-    CVScrollBar_SetWheelStep( hSB, 1 )      ' a different value: clears the accumulator
-    CScrollPanel_HandleWheelDelta( hT, -120 )
+    PsScrollPanel_SetPos( hT, 0 )
+    PsVScrollBar_SetWheelStep( hSB, 1 )      ' a different value: clears the accumulator
+    PsScrollPanel_HandleWheelDelta( hT, -120 )
     dim as integer nExpect = nStep
     if nExpect > 700 then nExpect = 700
     SelfTest_Check( "one wheel notch = system lines x line height", _
-        CScrollPanel_GetPos(hT) = nExpect, _
-        "pos=" & str(CScrollPanel_GetPos(hT)) & " expected=" & str(nExpect) & _
+        PsScrollPanel_GetPos(hT) = nExpect, _
+        "pos=" & str(PsScrollPanel_GetPos(hT)) & " expected=" & str(nExpect) & _
         " (lines=" & str(sysval) & " lineH=" & str(nLine) & ")" )
 
-    CScrollPanel_SetPos( hT, 0 )
-    CVScrollBar_SetWheelStep( hSB, 1 )
-    CScrollPanel_HandleWheelDelta( hT, -120 )
-    CScrollPanel_HandleWheelDelta( hT, 120 )
+    PsScrollPanel_SetPos( hT, 0 )
+    PsVScrollBar_SetWheelStep( hSB, 1 )
+    PsScrollPanel_HandleWheelDelta( hT, -120 )
+    PsScrollPanel_HandleWheelDelta( hT, 120 )
     SelfTest_Check( "the opposite notch comes back to where it started", _
-        CScrollPanel_GetPos(hT) = 0, "pos=" & str(CScrollPanel_GetPos(hT)) )
+        PsScrollPanel_GetPos(hT) = 0, "pos=" & str(PsScrollPanel_GetPos(hT)) )
 
     ' Sub-notch accumulation: a precision trackpad sends deltas well under 120, and they
     ' must add up rather than being discarded one at a time.
-    CScrollPanel_SetPos( hT, 0 )
-    CVScrollBar_SetWheelStep( hSB, 1 )
-    CScrollPanel_HandleWheelDelta( hT, -1 )
-    dim as integer nAfterOne = CScrollPanel_GetPos(hT)
-    CScrollPanel_HandleWheelDelta( hT, -59 )
+    PsScrollPanel_SetPos( hT, 0 )
+    PsVScrollBar_SetWheelStep( hSB, 1 )
+    PsScrollPanel_HandleWheelDelta( hT, -1 )
+    dim as integer nAfterOne = PsScrollPanel_GetPos(hT)
+    PsScrollPanel_HandleWheelDelta( hT, -59 )
     dim as integer nExpect60 = (60 * nStep) \ 120
     if nExpect60 > 700 then nExpect60 = 700
-    SelfTest_Check( "sub-notch deltas accumulate", CScrollPanel_GetPos(hT) = nExpect60, _
-        "after -1=" & str(nAfterOne) & " after -60 total=" & str(CScrollPanel_GetPos(hT)) & _
+    SelfTest_Check( "sub-notch deltas accumulate", PsScrollPanel_GetPos(hT) = nExpect60, _
+        "after -1=" & str(nAfterOne) & " after -60 total=" & str(PsScrollPanel_GetPos(hT)) & _
         " expected=" & str(nExpect60) )
 
-    CScrollPanel_SetPos( hT, 700 )
-    CVScrollBar_SetWheelStep( hSB, 1 )
-    CScrollPanel_HandleWheelDelta( hT, -1200 )
-    SelfTest_Check( "the wheel clamps at the end of the page", CScrollPanel_GetPos(hT) = 700, _
-        "pos=" & str(CScrollPanel_GetPos(hT)) )
-    CScrollPanel_HandleWheelDelta( hT, 12000 )
-    SelfTest_Check( "the wheel clamps at the top", CScrollPanel_GetPos(hT) = 0, _
-        "pos=" & str(CScrollPanel_GetPos(hT)) )
+    PsScrollPanel_SetPos( hT, 700 )
+    PsVScrollBar_SetWheelStep( hSB, 1 )
+    PsScrollPanel_HandleWheelDelta( hT, -1200 )
+    SelfTest_Check( "the wheel clamps at the end of the page", PsScrollPanel_GetPos(hT) = 700, _
+        "pos=" & str(PsScrollPanel_GetPos(hT)) )
+    PsScrollPanel_HandleWheelDelta( hT, 12000 )
+    SelfTest_Check( "the wheel clamps at the top", PsScrollPanel_GetPos(hT) = 0, _
+        "pos=" & str(PsScrollPanel_GetPos(hT)) )
 
     ' ---- the strip is re-derived when its width changes ---------------------------------
-    CScrollPanel_SetScrollBarWidth( hT, 24 )
-    dim as integer sbW2 = 400 - CScrollPanel_GetPanelWidth(hT)
+    PsScrollPanel_SetScrollBarWidth( hT, 24 )
+    dim as integer sbW2 = 400 - PsScrollPanel_GetPanelWidth(hT)
     rcBar = SelfTest_BarRect(hT)
     SelfTest_Check( "SetScrollBarWidth re-derives the page width", _
         (rcBar.right - rcBar.left) = sbW2, _
@@ -599,28 +599,28 @@ sub frmMain_RunSelfTest()
     dim as POINT ptSave : GetCursorPos( @ptSave )
     SetCursorPos( 0, 0 )
 
-    dim as HWND hDemoPanel = CScrollPanel_GetPanel( ghScrollPanel )
+    dim as HWND hDemoPanel = PsScrollPanel_GetPanel( ghScrollPanel )
     dim as HWND hLastCtl   = 0
     for i as integer = gRowCount - 1 to 0 step -1
         if gRows(i).hCtl then hLastCtl = gRows(i).hCtl : exit for
     next
 
-    CScrollPanel_SetPos( ghScrollPanel, 0 )
+    PsScrollPanel_SetPos( ghScrollPanel, 0 )
     SetFocus( HWND_FRMMAIN )
     SendMessage( ghScrollPanel, WM_TIMER, IDT_CSCROLLPANEL_REVEAL, 0 )
     SelfTest_Check( "reveal: cursor away and nothing focused -> thumb hidden", _
-        CScrollPanel_IsThumbVisible( ghScrollPanel ) = false, _
-        "visible=" & str(CScrollPanel_IsThumbVisible( ghScrollPanel )) )
+        PsScrollPanel_IsThumbVisible( ghScrollPanel ) = false, _
+        "visible=" & str(PsScrollPanel_IsThumbVisible( ghScrollPanel )) )
 
     SetFocus( hLastCtl )
     SendMessage( ghScrollPanel, WM_TIMER, IDT_CSCROLLPANEL_REVEAL, 0 )
     SelfTest_Check( "reveal: focus alone reveals the thumb, cursor still away", _
-        CScrollPanel_IsThumbVisible( ghScrollPanel ) = true, _
-        "visible=" & str(CScrollPanel_IsThumbVisible( ghScrollPanel )) )
+        PsScrollPanel_IsThumbVisible( ghScrollPanel ) = true, _
+        "visible=" & str(PsScrollPanel_IsThumbVisible( ghScrollPanel )) )
 
     dim as RECT rcCtl = SelfTest_ChildPageRect( hDemoPanel, hLastCtl )
-    dim as integer nPos  = CScrollPanel_GetPos( ghScrollPanel )
-    dim as integer nView = CScrollPanel_GetViewportHeight( ghScrollPanel )
+    dim as integer nPos  = PsScrollPanel_GetPos( ghScrollPanel )
+    dim as integer nView = PsScrollPanel_GetViewportHeight( ghScrollPanel )
     SelfTest_Check( "focus change scrolled the control into view", _
         (nPos > 0) andalso (rcCtl.top >= nPos) andalso (rcCtl.bottom <= nPos + nView), _
         "child=" & str(rcCtl.top) & ".." & str(rcCtl.bottom) & _
@@ -632,19 +632,19 @@ sub frmMain_RunSelfTest()
     SetFocus( HWND_FRMMAIN )
     SendMessage( ghScrollPanel, WM_TIMER, IDT_CSCROLLPANEL_REVEAL, 0 )
     SelfTest_Check( "reveal: focus leaving the page hides the thumb again", _
-        CScrollPanel_IsThumbVisible( ghScrollPanel ) = false, _
-        "visible=" & str(CScrollPanel_IsThumbVisible( ghScrollPanel )) )
+        PsScrollPanel_IsThumbVisible( ghScrollPanel ) = false, _
+        "visible=" & str(PsScrollPanel_IsThumbVisible( ghScrollPanel )) )
 
     ' Focus is NOT restored by a scroll: a user who scrolls away from the focused control
     ' must not have it yanked back under them on the next tick.
-    dim as integer nBefore = CScrollPanel_GetPos( ghScrollPanel )
+    dim as integer nBefore = PsScrollPanel_GetPos( ghScrollPanel )
     SetFocus( hLastCtl )
     SendMessage( ghScrollPanel, WM_TIMER, IDT_CSCROLLPANEL_REVEAL, 0 )
-    CScrollPanel_SetPos( ghScrollPanel, 0 )
+    PsScrollPanel_SetPos( ghScrollPanel, 0 )
     SendMessage( ghScrollPanel, WM_TIMER, IDT_CSCROLLPANEL_REVEAL, 0 )
     SelfTest_Check( "an unchanged focus does not re-scroll", _
-        CScrollPanel_GetPos( ghScrollPanel ) = 0, _
-        "pos=" & str(CScrollPanel_GetPos( ghScrollPanel )) & " (was " & str(nBefore) & ")" )
+        PsScrollPanel_GetPos( ghScrollPanel ) = 0, _
+        "pos=" & str(PsScrollPanel_GetPos( ghScrollPanel )) & " (was " & str(nBefore) & ")" )
 
     SetFocus( HWND_FRMMAIN )
     SetCursorPos( ptSave.x, ptSave.y )
@@ -712,10 +712,10 @@ function frmMain_WndProc( _
             return 0
 
         case WM_COMMAND
-            ' These come from controls on the PAGE, whose parent is the CScrollPanel's
+            ' These come from controls on the PAGE, whose parent is the PsScrollPanel's
             ' panel window -- not this form. They arrive here because the control offers
             ' them to its message callback and, unclaimed, forwards them to its own
-            ' parent. That is what lets an existing page move onto a CScrollPanel without
+            ' parent. That is what lets an existing page move onto a PsScrollPanel without
             ' its WM_COMMAND handling being rewritten.
             if hiword(wParam) = BN_CLICKED then
                 dim as HWND hCtl = cast(HWND, lParam)
@@ -731,11 +731,11 @@ function frmMain_WndProc( _
             ' may appear for these -- that asymmetry with the wheel is the point.
             select case wParam
                 case VK_HOME
-                    CScrollPanel_SetPos( ghScrollPanel, 0 )
+                    PsScrollPanel_SetPos( ghScrollPanel, 0 )
                     print "SetPos(0) (silent: no scroll callback fires)"
                 case VK_END
-                    CScrollPanel_SetPos( ghScrollPanel, CScrollPanel_GetContentHeight(ghScrollPanel) )
-                    print "SetPos(end) (silent) -> pos=" & str(CScrollPanel_GetPos(ghScrollPanel))
+                    PsScrollPanel_SetPos( ghScrollPanel, PsScrollPanel_GetContentHeight(ghScrollPanel) )
+                    print "SetPos(end) (silent) -> pos=" & str(PsScrollPanel_GetPos(ghScrollPanel))
             end select
 
         case WM_SYSCOMMAND
@@ -771,24 +771,24 @@ function frmMain_Show( byval hWndParent as HWND ) as LRESULT
     ghEditBrush = CreateSolidBrush( theme.BackColorEdit )
 
     ' ---- the control -------------------------------------------------------------------
-    ghScrollPanel = CScrollPanel_Create( HWND_FRMMAIN, IDC_FRMMAIN_SCROLLPANEL )
-    CScrollPanel_SetColors( ghScrollPanel, theme.BackColorBox, theme.ForeColor )
-    CScrollPanel_SetScrollBarColors( ghScrollPanel, theme.BackColorBox, _
+    ghScrollPanel = PsScrollPanel_Create( HWND_FRMMAIN, IDC_FRMMAIN_SCROLLPANEL )
+    PsScrollPanel_SetColors( ghScrollPanel, theme.BackColorBox, theme.ForeColor )
+    PsScrollPanel_SetScrollBarColors( ghScrollPanel, theme.BackColorBox, _
                                      theme.ForeColorScrollBar, theme.ForeColorScrollBarHot )
-    CScrollPanel_SetPaintCallback( ghScrollPanel, @ScrollPanel_Paint )
-    CScrollPanel_SetMessageCallback( ghScrollPanel, @ScrollPanel_Message )
-    CScrollPanel_SetLayoutCallback( ghScrollPanel, @ScrollPanel_Layout )
-    CScrollPanel_SetScrollCallback( ghScrollPanel, @ScrollPanel_Scroll )
-    CScrollPanel_SetLineHeight( ghScrollPanel, ROW_HEIGHT + ROW_GAP )   ' one notch ~ 3 rows
+    PsScrollPanel_SetPaintCallback( ghScrollPanel, @ScrollPanel_Paint )
+    PsScrollPanel_SetMessageCallback( ghScrollPanel, @ScrollPanel_Message )
+    PsScrollPanel_SetLayoutCallback( ghScrollPanel, @ScrollPanel_Layout )
+    PsScrollPanel_SetScrollCallback( ghScrollPanel, @ScrollPanel_Scroll )
+    PsScrollPanel_SetLineHeight( ghScrollPanel, ROW_HEIGHT + ROW_GAP )   ' one notch ~ 3 rows
 
     ' ---- the page ----------------------------------------------------------------------
     ' The host's controls are parented to the PANEL, never to the control itself.
-    frmMain_BuildSettingsPage( CScrollPanel_GetPanel( ghScrollPanel ) )
-    CScrollPanel_SetFont( ghScrollPanel, ghFont(GUIFONT_9) )
+    frmMain_BuildSettingsPage( PsScrollPanel_GetPanel( ghScrollPanel ) )
+    PsScrollPanel_SetFont( ghScrollPanel, ghFont(GUIFONT_9) )
 
     frmMain_Layout( HWND_FRMMAIN )      ' sizes the control -> the layout callback runs
 
-    print "CScrollPanel test harness"
+    print "PsScrollPanel test harness"
     print "-------------------------"
     print "A settings page of plain STATIC/BUTTON/EDIT controls, longer than the window."
     print ""
@@ -817,7 +817,7 @@ function frmMain_Show( byval hWndParent as HWND ) as LRESULT
     UpdateWindow( pWindow->hWindow )
     ShowWindow( pWindow->hWindow, SW_SHOW )
 
-    if environ("CSCROLLPANEL_SELFTEST") = "1" then
+    if environ("PSSCROLLPANEL_SELFTEST") = "1" then
         frmMain_RunSelfTest()
         DestroyWindow( HWND_FRMMAIN )
     end if
@@ -832,7 +832,7 @@ function frmMain_Show( byval hWndParent as HWND ) as LRESULT
         ' Processes accelerator keys for menu commands
         if (pWindow->AccelHandle = 0) orelse (TranslateAccelerator(pWindow->hWindow, pWindow->AccelHandle, @uMsg) = 0) then
             ' IsDialogMessage is what gives the page Tab navigation -- and it only recurses
-            ' into the control because CScrollPanel's two windows carry WS_EX_CONTROLPARENT.
+            ' into the control because PsScrollPanel's two windows carry WS_EX_CONTROLPARENT.
             if IsDialogMessage(pWindow->hWindow, @uMsg) = 0 then
                 TranslateMessage @uMsg    ' Translates virtual-key messages into character messages.
                 DispatchMessage @uMsg     ' Dispatches a message to a window procedure.

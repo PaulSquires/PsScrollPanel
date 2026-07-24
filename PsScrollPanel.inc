@@ -1,33 +1,33 @@
 ''
-''  CScrollPanel.inc  -- scrolling panel (viewport + page + auto-hiding scrollbar)
+''  PsScrollPanel.inc  -- scrolling panel (viewport + page + auto-hiding scrollbar)
 ''
 
-#include once "CScrollPanel.bi"
+#include once "PsScrollPanel.bi"
 
 
 ' The container owns the state. The panel reaches it through GetParent rather than keeping
-' a second copy of the pointer -- one owner, nothing to keep in step (CListBox's pattern
+' a second copy of the pointer -- one owner, nothing to keep in step (PsListBox's pattern
 ' for its own scrollbar callback).
-function GetScrollPanelPointer( byval hScp as HWND ) as CSCROLLPANEL ptr
+function GetScrollPanelPointer( byval hScp as HWND ) as PSSCROLLPANEL ptr
     dim pWindow as CWindow ptr = AfxCWindowPtr(hScp)
     if pWindow = 0 then return 0
-    return cast( CSCROLLPANEL ptr, pWindow->UserData(0) )
+    return cast( PSSCROLLPANEL ptr, pWindow->UserData(0) )
 end function
 
-function GetScrollPanelPointerFromPanel( byval hPanel as HWND ) as CSCROLLPANEL ptr
+function GetScrollPanelPointerFromPanel( byval hPanel as HWND ) as PSSCROLLPANEL ptr
     return GetScrollPanelPointer( GetParent(hPanel) )
 end function
 
 
 ' ========================================================================================
-' Geometry trace, gated on CSCROLLPANEL_TRACE=1. The environment is read once.
+' Geometry trace, gated on PSSCROLLPANEL_TRACE=1. The environment is read once.
 ' ========================================================================================
-function CScrollPanel_TraceOn() as boolean
+function PsScrollPanel_TraceOn() as boolean
     static as boolean bChecked = false
     static as boolean bEnabled = false
     if bChecked = false then
         bChecked = true
-        bEnabled = (environ("CSCROLLPANEL_TRACE") = "1")
+        bEnabled = (environ("PSSCROLLPANEL_TRACE") = "1")
     end if
     return bEnabled
 end function
@@ -37,7 +37,7 @@ end function
 ' The reveal rule. A pure function of three booleans so the truth table is assertable
 ' without a real mouse, a real focus or a real window -- that is why it is not a method.
 ' ========================================================================================
-function CScrollPanel_ShouldShow( _
+function PsScrollPanel_ShouldShow( _
             byval bNeeds as boolean, _
             byval bMouse as boolean, _
             byval bFocus as boolean _
@@ -52,8 +52,8 @@ end function
 ' Hand a message to the host's message callback. Returns TRUE if the host claims it, in
 ' which case lResult carries the value the window procedure must return.
 ' ========================================================================================
-function CScrollPanel_CallMessage( _
-            byval pScp    as CSCROLLPANEL ptr, _
+function PsScrollPanel_CallMessage( _
+            byval pScp    as PSSCROLLPANEL ptr, _
             byval hFrom   as HWND, _
             byval uMsg    as UINT, _
             byval wParam  as WPARAM, _
@@ -87,8 +87,8 @@ end function
 ' THE one place nPos changes. Every path -- wheel, thumb, host setter, focus-into-view --
 ' routes through it, so the page and the bar can never drift apart.
 ' ========================================================================================
-function CScrollPanel_ScrollTo( _
-            byval pScp    as CSCROLLPANEL ptr, _
+function PsScrollPanel_ScrollTo( _
+            byval pScp    as PSSCROLLPANEL ptr, _
             byval nNewPos as integer, _
             byval bNotify as boolean _
             ) as boolean
@@ -103,8 +103,8 @@ function CScrollPanel_ScrollTo( _
     ' Mirror the position back into the bar unless the bar is where it came from. SetPos is
     ' silent there too, so this cannot re-enter.
     if pScp->hScrollBar then
-        if CVScrollBar_GetPos( pScp->hScrollBar ) <> nNewPos then
-            CVScrollBar_SetPos( pScp->hScrollBar, nNewPos )
+        if PsVScrollBar_GetPos( pScp->hScrollBar ) <> nNewPos then
+            PsVScrollBar_SetPos( pScp->hScrollBar, nNewPos )
         end if
     end if
 
@@ -124,14 +124,14 @@ end function
 ' no message to hang a TME_LEAVE request off. A periodic cursor test sees it regardless.
 ' The same tick carries the focus-change detection.
 ' ========================================================================================
-sub CScrollPanel_ArmRevealTimer( byval pScp as CSCROLLPANEL ptr )
+sub PsScrollPanel_ArmRevealTimer( byval pScp as PSSCROLLPANEL ptr )
     if pScp = 0 then return
     if pScp->revealTimerOn then return
-    SetTimer( pScp->hWin, IDT_CSCROLLPANEL_REVEAL, CSCROLLPANEL_REVEAL_MS, NULL )
+    SetTimer( pScp->hWin, IDT_CSCROLLPANEL_REVEAL, PSSCROLLPANEL_REVEAL_MS, NULL )
     pScp->revealTimerOn = true
 end sub
 
-sub CScrollPanel_KillRevealTimer( byval pScp as CSCROLLPANEL ptr )
+sub PsScrollPanel_KillRevealTimer( byval pScp as PSSCROLLPANEL ptr )
     if pScp = 0 then return
     if pScp->revealTimerOn = false then return
     KillTimer( pScp->hWin, IDT_CSCROLLPANEL_REVEAL )
@@ -144,11 +144,11 @@ end sub
 ' either way, so nothing reflows and host content never jumps sideways. ShowWindow is
 ' called only on a real change, so this is cheap to call from a 100 ms timer.
 ' ========================================================================================
-sub CScrollPanel_ApplyReveal( byval pScp as CSCROLLPANEL ptr )
+sub PsScrollPanel_ApplyReveal( byval pScp as PSSCROLLPANEL ptr )
     if pScp = 0 then return
     if pScp->hScrollBar = 0 then return
 
-    dim as boolean bShow = CScrollPanel_ShouldShow( pScp->NeedsThumb(), _
+    dim as boolean bShow = PsScrollPanel_ShouldShow( pScp->NeedsThumb(), _
                                                     pScp->MouseIsOver(), _
                                                     pScp->FocusIsInside() )
     ' Never yank the thumb out from under a drag in progress: the user is holding it, which
@@ -166,22 +166,22 @@ end sub
 ' every path that can change the content height, the viewport size or the position, which
 ' is what stops the thumb ever going stale.
 ' ========================================================================================
-sub CScrollPanel_SyncScrollBar( byval pScp as CSCROLLPANEL ptr )
+sub PsScrollPanel_SyncScrollBar( byval pScp as PSSCROLLPANEL ptr )
     if pScp = 0 then return
     if pScp->hScrollBar = 0 then return
 
     ' Range units are PIXELS: total = the page, page = the visible slice, pos = the offset.
-    CVScrollBar_SetRange( pScp->hScrollBar, _
+    PsVScrollBar_SetRange( pScp->hScrollBar, _
                           pScp->nContentHeight, _
                           pScp->ViewportHeight(), _
                           pScp->nPos )
 
     if pScp->NeedsThumb() then
-        CScrollPanel_ArmRevealTimer( pScp )
+        PsScrollPanel_ArmRevealTimer( pScp )
     else
-        CScrollPanel_KillRevealTimer( pScp )
+        PsScrollPanel_KillRevealTimer( pScp )
     end if
-    CScrollPanel_ApplyReveal( pScp )
+    PsScrollPanel_ApplyReveal( pScp )
 end sub
 
 
@@ -196,8 +196,8 @@ end sub
 '   5  the bar takes its strip
 '   6  the model is pushed into the bar and the reveal rule re-evaluated
 ' ========================================================================================
-sub CScrollPanel_PositionWindows( byval hScp as HWND )
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+sub PsScrollPanel_PositionWindows( byval hScp as HWND )
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return
     if pScp->bInLayout then return          ' re-entered from inside the layout callback
 
@@ -237,10 +237,10 @@ sub CScrollPanel_PositionWindows( byval hScp as HWND )
     end if
 
     ' --- 6 --------------------------------------------------------------------------
-    CScrollPanel_SyncScrollBar( pScp )
+    PsScrollPanel_SyncScrollBar( pScp )
 
-    if CScrollPanel_TraceOn() then
-        dim as string s = "CScrollPanel layout  viewport=" & str(pScp->ViewportWidth()) & _
+    if PsScrollPanel_TraceOn() then
+        dim as string s = "PsScrollPanel layout  viewport=" & str(pScp->ViewportWidth()) & _
             "x" & str(cyView) & "  panel=(0," & str(-pScp->nPos) & "," & str(cxPanel) & _
             "x" & str(pScp->PanelHeight()) & ")  bar=(" & str(cxPanel) & ",0," & _
             str(pScp->ScaledBarWidth()) & "x" & str(cyView) & ")  content=" & _
@@ -254,15 +254,15 @@ end sub
 ' ========================================================================================
 ' The owned scrollbar reports that the USER scrolled: move the page there and pass it on.
 ' ========================================================================================
-sub CScrollPanel_OnScrollBarScroll( byval hSB as HWND, byval newPos as integer )
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer( GetParent(hSB) )
+sub PsScrollPanel_OnScrollBarScroll( byval hSB as HWND, byval newPos as integer )
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer( GetParent(hSB) )
     if pScp = 0 then return
 
     ' Mirror whatever we actually did back into the bar, so the thumb can never show a
     ' position the page is not at. SetPos does not re-enter this callback.
     dim as integer nWanted = pScp->ClampPos( newPos )
-    CScrollPanel_ScrollTo( pScp, nWanted, true )
-    if nWanted <> newPos then CVScrollBar_SetPos( hSB, nWanted )
+    PsScrollPanel_ScrollTo( pScp, nWanted, true )
+    if nWanted <> newPos then PsVScrollBar_SetPos( hSB, nWanted )
 end sub
 
 
@@ -272,11 +272,11 @@ end sub
 ' The step conversion lives HERE because this control's range is in pixels while the system
 ' setting counts LINES. Recomputed per message rather than cached, so a Control Panel change
 ' takes effect immediately; setting the step to the value it already has is a documented
-' no-op in CVScrollBar, so the sub-notch accumulator survives (without that, a slow trackpad
+' no-op in PsVScrollBar, so the sub-notch accumulator survives (without that, a slow trackpad
 ' swipe would reset its remainder on every message and feel dead).
 ' ========================================================================================
-function CScrollPanel_HandleWheelDelta( byval hScp as HWND, byval nDelta as integer ) as boolean
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+function PsScrollPanel_HandleWheelDelta( byval hScp as HWND, byval nDelta as integer ) as boolean
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return false
     if pScp->hScrollBar = 0 then return false
 
@@ -286,7 +286,7 @@ function CScrollPanel_HandleWheelDelta( byval hScp as HWND, byval nDelta as inte
     dim as integer nStep
     ' WHEEL_PAGESCROLL (= UINT_MAX) means "one page per notch". FreeBASIC's winuser.bi
     ' declares the SPI_* constants but NOT this one, so it is spelled out -- the same
-    ' workaround CVScrollBar.inc and CTextBox.inc use.
+    ' workaround PsVScrollBar.inc and PsTextBox.inc use.
     if sysval = cast(ulong, &hFFFFFFFF) then
         nStep = pScp->ViewportHeight()
     else
@@ -294,10 +294,10 @@ function CScrollPanel_HandleWheelDelta( byval hScp as HWND, byval nDelta as inte
     end if
     if nStep < 1 then nStep = 1
 
-    CVScrollBar_SetWheelStep( pScp->hScrollBar, nStep )
+    PsVScrollBar_SetWheelStep( pScp->hScrollBar, nStep )
     ' The bar owns the sign, the accumulation and the clamping; it calls our scroll callback
-    ' back through CScrollPanel_OnScrollBarScroll, which moves the page.
-    return CVScrollBar_HandleWheelDelta( pScp->hScrollBar, nDelta )
+    ' back through PsScrollPanel_OnScrollBarScroll, which moves the page.
+    return PsVScrollBar_HandleWheelDelta( pScp->hScrollBar, nDelta )
 end function
 
 
@@ -307,8 +307,8 @@ end function
 ' bNotify is FALSE for the public API (a host asking for this already knows) and TRUE for
 ' the focus-into-view scroll, which a user's Tab caused.
 ' ========================================================================================
-function CScrollPanel_EnsureVisibleEx( _
-            byval pScp    as CSCROLLPANEL ptr, _
+function PsScrollPanel_EnsureVisibleEx( _
+            byval pScp    as PSSCROLLPANEL ptr, _
             byval hChild  as HWND, _
             byval nMargin as integer, _
             byval bNotify as boolean _
@@ -340,14 +340,14 @@ function CScrollPanel_EnsureVisibleEx( _
         nNewPos = nBottom - cyView
     end if
 
-    return CScrollPanel_ScrollTo( pScp, nNewPos, bNotify )
+    return PsScrollPanel_ScrollTo( pScp, nNewPos, bNotify )
 end function
 
 
 ' ========================================================================================
 ' One reveal-timer tick: the hover/focus decision, and the focus-into-view scroll.
 ' ========================================================================================
-sub CScrollPanel_OnRevealTick( byval pScp as CSCROLLPANEL ptr )
+sub PsScrollPanel_OnRevealTick( byval pScp as PSSCROLLPANEL ptr )
     if pScp = 0 then return
 
     dim as HWND hFocus = GetFocus()
@@ -359,12 +359,12 @@ sub CScrollPanel_OnRevealTick( byval pScp as CSCROLLPANEL ptr )
         ' would be yanked straight back under the cursor.
         if pScp->bAutoScrollToFocus andalso (hFocus <> 0) andalso (hFocus <> hPrev) then
             if IsChild( pScp->hPanel, hFocus ) then
-                CScrollPanel_EnsureVisibleEx( pScp, hFocus, 0, true )
+                PsScrollPanel_EnsureVisibleEx( pScp, hFocus, 0, true )
             end if
         end if
     end if
 
-    CScrollPanel_ApplyReveal( pScp )
+    PsScrollPanel_ApplyReveal( pScp )
 end sub
 
 
@@ -372,11 +372,11 @@ end sub
 ' Paint the PAGE. The buffer covers the whole page rect; Windows has already clipped the
 ' repaint to whatever slice of it is on screen.
 ' ========================================================================================
-function CScrollPanel_OnPanelPaint( byval hwnd as HWND ) as LRESULT
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointerFromPanel(hwnd)
+function PsScrollPanel_OnPanelPaint( byval hwnd as HWND ) as LRESULT
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointerFromPanel(hwnd)
     if pScp = 0 then return 0
 
-    dim as CBufferPaint b
+    dim as PsBufferPaint b
     b.BeginDoubleBuffer(hwnd)
 
     dim as SCP_PAINTINFO p
@@ -403,11 +403,11 @@ end function
 ' -- which is exactly what makes the hidden-thumb state seamless, since the strip then
 ' matches the page it sits beside.
 ' ========================================================================================
-function CScrollPanel_OnPaint( byval hwnd as HWND ) as LRESULT
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hwnd)
+function PsScrollPanel_OnPaint( byval hwnd as HWND ) as LRESULT
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hwnd)
     if pScp = 0 then return 0
 
-    dim as CBufferPaint b
+    dim as PsBufferPaint b
     b.BeginDoubleBuffer(hwnd)
     b.SetBackColor( pScp->BackColor )
     b.PaintClientRect()
@@ -425,20 +425,20 @@ end function
 '                       one SetColors call and no host code at all
 '   WM_COMMAND/WM_NOTIFY offered to the message callback, then FORWARDED to the container's
 '                       parent -- so a host that already handles its controls in its own
-'                       WndProc keeps working when its page moves onto a CScrollPanel.
+'                       WndProc keeps working when its page moves onto a PsScrollPanel.
 ' ========================================================================================
-function CScrollPanel_PanelProc( _
+function PsScrollPanel_PanelProc( _
             byval hwnd   as HWND, _
             byval uMsg   as UINT, _
             byval wParam as WPARAM, _
             byval lParam as LPARAM _
             ) as LRESULT
 
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointerFromPanel(hwnd)
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointerFromPanel(hwnd)
     dim as LRESULT lResult
 
     select case uMsg
-        HANDLE_MSG (hwnd, WM_PAINT, CScrollPanel_OnPanelPaint)
+        HANDLE_MSG (hwnd, WM_PAINT, PsScrollPanel_OnPanelPaint)
 
     case WM_ERASEBKGND
         return true      ' the double buffer paints every pixel
@@ -447,7 +447,7 @@ function CScrollPanel_PanelProc( _
         if pScp = 0 then exit select
         ' The host gets first refusal, because "every EDIT on this page has a lighter
         ' background" is a legitimate thing to want and only the host knows which is which.
-        if CScrollPanel_CallMessage( pScp, hwnd, uMsg, wParam, lParam, lResult ) then
+        if PsScrollPanel_CallMessage( pScp, hwnd, uMsg, wParam, lParam, lResult ) then
             return lResult
         end if
         SetBkColor( cast(HDC, wParam), pScp->BackColor )
@@ -456,7 +456,7 @@ function CScrollPanel_PanelProc( _
 
     case WM_COMMAND, WM_NOTIFY, WM_HSCROLL, WM_VSCROLL
         if pScp = 0 then exit select
-        if CScrollPanel_CallMessage( pScp, hwnd, uMsg, wParam, lParam, lResult ) then
+        if PsScrollPanel_CallMessage( pScp, hwnd, uMsg, wParam, lParam, lResult ) then
             return lResult
         end if
         ' Not claimed: send it where it would have gone if the page were not here.
@@ -466,12 +466,12 @@ function CScrollPanel_PanelProc( _
 
     case WM_MOUSEWHEEL
         if pScp = 0 then exit select
-        if CScrollPanel_CallMessage( pScp, hwnd, uMsg, wParam, lParam, lResult ) then
+        if PsScrollPanel_CallMessage( pScp, hwnd, uMsg, wParam, lParam, lResult ) then
             return lResult
         end if
         ' cast(short, ...): hiword is UNSIGNED, and a delta read without this turns ~-120
         ' into ~65416, silently inverting the direction. See C:\dev\Learnings.md.
-        CScrollPanel_HandleWheelDelta( pScp->hWin, cast(short, hiword(wParam)) )
+        PsScrollPanel_HandleWheelDelta( pScp->hWin, cast(short, hiword(wParam)) )
         return 0
 
     case WM_LBUTTONDOWN, WM_LBUTTONUP, WM_RBUTTONDOWN, WM_RBUTTONUP, _
@@ -479,13 +479,13 @@ function CScrollPanel_PanelProc( _
         ' Observation only -- this control takes no capture and tracks no press state, so
         ' there is no invariant a host callback could strand by claiming any of these.
         if pScp = 0 then exit select
-        if CScrollPanel_CallMessage( pScp, hwnd, uMsg, wParam, lParam, lResult ) then
+        if PsScrollPanel_CallMessage( pScp, hwnd, uMsg, wParam, lParam, lResult ) then
             return lResult
         end if
         exit select
 
     case WM_NCDESTROY
-        ' Only this window's CWindow. The CSCROLLPANEL belongs to the container, whose own
+        ' Only this window's CWindow. The PSSCROLLPANEL belongs to the container, whose own
         ' WM_NCDESTROY follows this one (children are torn down first).
         dim as CWindow ptr pWindow = AfxCWindowPtr(hwnd)
         if pWindow then delete(pWindow)
@@ -501,40 +501,40 @@ end function
 ' ========================================================================================
 ' The CONTAINER's window procedure (the viewport).
 ' ========================================================================================
-function CScrollPanel_WndProc( _
+function PsScrollPanel_WndProc( _
             byval hwnd   as HWND, _
             byval uMsg   as UINT, _
             byval wParam as WPARAM, _
             byval lParam as LPARAM _
             ) as LRESULT
 
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hwnd)
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hwnd)
     dim as LRESULT lResult
 
     select case uMsg
-        HANDLE_MSG (hwnd, WM_PAINT, CScrollPanel_OnPaint)
+        HANDLE_MSG (hwnd, WM_PAINT, PsScrollPanel_OnPaint)
 
     case WM_ERASEBKGND
         return true      ' the double buffer paints every pixel
 
     case WM_SIZE
-        CScrollPanel_PositionWindows( hwnd )
+        PsScrollPanel_PositionWindows( hwnd )
         return 0
 
     case WM_MOUSEWHEEL
         ' Reachable over the reserved strip while the thumb is hidden.
         if pScp = 0 then exit select
-        if CScrollPanel_CallMessage( pScp, hwnd, uMsg, wParam, lParam, lResult ) then
+        if PsScrollPanel_CallMessage( pScp, hwnd, uMsg, wParam, lParam, lResult ) then
             return lResult
         end if
-        CScrollPanel_HandleWheelDelta( hwnd, cast(short, hiword(wParam)) )
+        PsScrollPanel_HandleWheelDelta( hwnd, cast(short, hiword(wParam)) )
         return 0
 
     case WM_COMMAND, WM_NOTIFY
         ' Rare (the host's controls live on the PAGE, not here), but a host that parents
         ' something to the container directly should still be heard.
         if pScp = 0 then exit select
-        if CScrollPanel_CallMessage( pScp, hwnd, uMsg, wParam, lParam, lResult ) then
+        if PsScrollPanel_CallMessage( pScp, hwnd, uMsg, wParam, lParam, lResult ) then
             return lResult
         end if
         exit select
@@ -542,7 +542,7 @@ function CScrollPanel_WndProc( _
     case WM_LBUTTONDOWN, WM_LBUTTONUP, WM_RBUTTONDOWN, WM_RBUTTONUP, _
          WM_MOUSEMOVE, WM_SETCURSOR
         if pScp = 0 then exit select
-        if CScrollPanel_CallMessage( pScp, hwnd, uMsg, wParam, lParam, lResult ) then
+        if PsScrollPanel_CallMessage( pScp, hwnd, uMsg, wParam, lParam, lResult ) then
             return lResult
         end if
         exit select
@@ -550,7 +550,7 @@ function CScrollPanel_WndProc( _
     case WM_TIMER
         if pScp = 0 then exit select
         if wParam = IDT_CSCROLLPANEL_REVEAL then
-            CScrollPanel_OnRevealTick( pScp )
+            PsScrollPanel_OnRevealTick( pScp )
             return 0
         end if
 
@@ -559,19 +559,19 @@ function CScrollPanel_WndProc( _
         if wParam = 0 then
             ' Hidden with the mouse over us: drop the poll and the reveal state, or the
             ' thumb would reappear stale the next time we are shown.
-            CScrollPanel_KillRevealTimer( pScp )
+            PsScrollPanel_KillRevealTimer( pScp )
             if pScp->bThumbShown then
                 pScp->bThumbShown = false
                 ShowWindow( pScp->hScrollBar, SW_HIDE )
             end if
         else
-            CScrollPanel_SyncScrollBar( pScp )
+            PsScrollPanel_SyncScrollBar( pScp )
         end if
         exit select
 
     case WM_NCDESTROY
         if pScp then
-            CScrollPanel_KillRevealTimer( pScp )
+            PsScrollPanel_KillRevealTimer( pScp )
             if pScp->hBackBrushObj then DeleteObject( pScp->hBackBrushObj )
             delete(pScp)
         end if
@@ -587,11 +587,11 @@ end function
 
 
 ' ========================================================================================
-' CScrollPanel_Create. The control starts hidden and zero-sized; the host positions, sizes
+' PsScrollPanel_Create. The control starts hidden and zero-sized; the host positions, sizes
 ' and shows it with SetWindowPos. Its two children are created here and are the control's
 ' to destroy.
 ' ========================================================================================
-function CScrollPanel_Create( byval hWndParent as HWND, byval CtrlID as integer ) as HWND
+function PsScrollPanel_Create( byval hWndParent as HWND, byval CtrlID as integer ) as HWND
 
     dim pWindow as CWindow ptr = New CWindow
 
@@ -600,11 +600,11 @@ function CScrollPanel_Create( byval hWndParent as HWND, byval CtrlID as integer 
     ' stops dead at the viewport and never reaches the page's controls -- which would take
     ' the focus-into-view scroll with it, since nothing would ever change focus.
     dim as HWND hScp = _
-        pWindow->Create( hWndParent, "", @CScrollPanel_WndProc, _
+        pWindow->Create( hWndParent, "", @PsScrollPanel_WndProc, _
                          0, 0, 0, 0, WS_CHILD or WS_CLIPSIBLINGS or WS_CLIPCHILDREN, _
                          WS_EX_CONTROLPARENT )
 
-    dim as CSCROLLPANEL ptr pScp = new CSCROLLPANEL
+    dim as PSSCROLLPANEL ptr pScp = new PSSCROLLPANEL
     pScp->hWin = hScp
     pScp->hBackBrushObj = CreateSolidBrush( pScp->BackColor )
 
@@ -616,7 +616,7 @@ function CScrollPanel_Create( byval hWndParent as HWND, byval CtrlID as integer 
     ' controls on its way past them.
     dim pPanelWin as CWindow ptr = New CWindow
     pScp->hPanel = _
-        pPanelWin->Create( hScp, "", @CScrollPanel_PanelProc, _
+        pPanelWin->Create( hScp, "", @PsScrollPanel_PanelProc, _
                            0, 0, 0, 0, _
                            WS_CHILD or WS_VISIBLE or WS_CLIPSIBLINGS or WS_CLIPCHILDREN, _
                            WS_EX_CONTROLPARENT )
@@ -632,23 +632,23 @@ function CScrollPanel_Create( byval hWndParent as HWND, byval CtrlID as integer 
     ' Starts hidden; the reveal rule decides when it appears. Its BACK color is set to the
     ' page's, so the reserved strip is indistinguishable from the page while the thumb is
     ' away -- the whole point of reserving it rather than reclaiming the width.
-    pScp->hScrollBar = CVScrollBar_Create( hScp, CtrlID + 2 )
-    CVScrollBar_SetScrollCallback( pScp->hScrollBar, @CScrollPanel_OnScrollBarScroll )
-    CVScrollBar_SetColors( pScp->hScrollBar, pScp->BackColor, BGR(53,59,69), BGR(90,98,112) )
+    pScp->hScrollBar = PsVScrollBar_Create( hScp, CtrlID + 2 )
+    PsVScrollBar_SetScrollCallback( pScp->hScrollBar, @PsScrollPanel_OnScrollBarScroll )
+    PsVScrollBar_SetColors( pScp->hScrollBar, pScp->BackColor, BGR(53,59,69), BGR(90,98,112) )
 
     function = hScp
 end function
 
 
-function CScrollPanel_GetPanel( byval hScp as HWND ) as HWND
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+function PsScrollPanel_GetPanel( byval hScp as HWND ) as HWND
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return 0
     return pScp->hPanel
 end function
 
 
-function CScrollPanel_GetScrollBar( byval hScp as HWND ) as HWND
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+function PsScrollPanel_GetScrollBar( byval hScp as HWND ) as HWND
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return 0
     return pScp->hScrollBar
 end function
@@ -657,8 +657,8 @@ end function
 ' ========================================================================================
 ' Content height. Silent: the host set it and already knows.
 ' ========================================================================================
-sub CScrollPanel_SetContentHeight( byval hScp as HWND, byval nHeight as integer )
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+sub PsScrollPanel_SetContentHeight( byval hScp as HWND, byval nHeight as integer )
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return
     if nHeight < 0 then nHeight = 0
     if nHeight = pScp->nContentHeight then return
@@ -670,13 +670,13 @@ sub CScrollPanel_SetContentHeight( byval hScp as HWND, byval nHeight as integer 
 
     pScp->nPos = pScp->ClampPos( pScp->nPos )
     pScp->ApplyScroll()
-    CScrollPanel_SyncScrollBar( pScp )
+    PsScrollPanel_SyncScrollBar( pScp )
     InvalidateRect( pScp->hPanel, NULL, FALSE )
 end sub
 
 
-function CScrollPanel_GetContentHeight( byval hScp as HWND ) as integer
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+function PsScrollPanel_GetContentHeight( byval hScp as HWND ) as integer
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return 0
     return pScp->nContentHeight
 end function
@@ -689,12 +689,12 @@ end function
 ' behind it -- which is the case that makes this worth having rather than the host summing
 ' its own row heights.
 ' ========================================================================================
-function CScrollPanel_AutoSizeContent( _
+function PsScrollPanel_AutoSizeContent( _
             byval hScp as HWND, _
             byval bottomPadding as integer = 0 _
             ) as integer
 
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return 0
     if pScp->hPanel = 0 then return 0
 
@@ -715,62 +715,62 @@ function CScrollPanel_AutoSizeContent( _
     loop
 
     if nBottom > 0 then nBottom += bottomPadding
-    CScrollPanel_SetContentHeight( hScp, nBottom )
+    PsScrollPanel_SetContentHeight( hScp, nBottom )
     return nBottom
 end function
 
 
-function CScrollPanel_GetPos( byval hScp as HWND ) as integer
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+function PsScrollPanel_GetPos( byval hScp as HWND ) as integer
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return 0
     return pScp->nPos
 end function
 
 
 ' Silent -- this is the host telling the page where to sit, not the user scrolling it.
-sub CScrollPanel_SetPos( byval hScp as HWND, byval nPosition as integer )
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+sub PsScrollPanel_SetPos( byval hScp as HWND, byval nPosition as integer )
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return
-    CScrollPanel_ScrollTo( pScp, nPosition, false )
+    PsScrollPanel_ScrollTo( pScp, nPosition, false )
 end sub
 
 
-function CScrollPanel_ScrollBy( byval hScp as HWND, byval nDelta as integer ) as boolean
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+function PsScrollPanel_ScrollBy( byval hScp as HWND, byval nDelta as integer ) as boolean
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return false
-    return CScrollPanel_ScrollTo( pScp, pScp->nPos + nDelta, false )
+    return PsScrollPanel_ScrollTo( pScp, pScp->nPos + nDelta, false )
 end function
 
 
-function CScrollPanel_EnsureVisible( _
+function PsScrollPanel_EnsureVisible( _
             byval hScp    as HWND, _
             byval hChild  as HWND, _
             byval nMargin as integer = 0 _
             ) as boolean
 
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return false
-    return CScrollPanel_EnsureVisibleEx( pScp, hChild, nMargin, false )
+    return PsScrollPanel_EnsureVisibleEx( pScp, hChild, nMargin, false )
 end function
 
 
-function CScrollPanel_GetViewportHeight( byval hScp as HWND ) as integer
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+function PsScrollPanel_GetViewportHeight( byval hScp as HWND ) as integer
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return 0
     return pScp->ViewportHeight()
 end function
 
 
-function CScrollPanel_GetPanelWidth( byval hScp as HWND ) as integer
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+function PsScrollPanel_GetPanelWidth( byval hScp as HWND ) as integer
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return 0
     return pScp->PanelWidth()
 end function
 
 
-sub CScrollPanel_Recalc( byval hScp as HWND )
-    CScrollPanel_PositionWindows( hScp )
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+sub PsScrollPanel_Recalc( byval hScp as HWND )
+    PsScrollPanel_PositionWindows( hScp )
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp then InvalidateRect( pScp->hPanel, NULL, FALSE )
 end sub
 
@@ -778,8 +778,8 @@ end sub
 ' ========================================================================================
 ' Appearance.
 ' ========================================================================================
-sub CScrollPanel_SetColors( byval hScp as HWND, byval backclr as COLORREF, byval foreclr as COLORREF )
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+sub PsScrollPanel_SetColors( byval hScp as HWND, byval backclr as COLORREF, byval foreclr as COLORREF )
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return
     pScp->ForeColor = foreclr
 
@@ -794,8 +794,8 @@ sub CScrollPanel_SetColors( byval hScp as HWND, byval backclr as COLORREF, byval
         ' The bar's own background follows the page, which is what keeps the reserved strip
         ' invisible while the thumb is away. Its thumb colors are the host's to set.
         if pScp->hScrollBar then
-            dim as CVSCROLLBAR ptr pSB = GetVScrollBarPointer( pScp->hScrollBar )
-            if pSB then CVScrollBar_SetColors( pScp->hScrollBar, backclr, pSB->ForeColor, pSB->ForeColorHot )
+            dim as PSVSCROLLBAR ptr pSB = GetVScrollBarPointer( pScp->hScrollBar )
+            if pSB then PsVScrollBar_SetColors( pScp->hScrollBar, backclr, pSB->ForeColor, pSB->ForeColorHot )
         end if
     end if
 
@@ -804,31 +804,31 @@ sub CScrollPanel_SetColors( byval hScp as HWND, byval backclr as COLORREF, byval
 end sub
 
 
-sub CScrollPanel_SetScrollBarColors( _
+sub PsScrollPanel_SetScrollBarColors( _
             byval hScp       as HWND, _
             byval backclr    as COLORREF, _
             byval foreclr    as COLORREF, _
             byval foreclrhot as COLORREF _
             )
 
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return
-    if pScp->hScrollBar then CVScrollBar_SetColors( pScp->hScrollBar, backclr, foreclr, foreclrhot )
+    if pScp->hScrollBar then PsVScrollBar_SetColors( pScp->hScrollBar, backclr, foreclr, foreclrhot )
 end sub
 
 
-sub CScrollPanel_SetScrollBarWidth( byval hScp as HWND, byval nWidth as integer )
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+sub PsScrollPanel_SetScrollBarWidth( byval hScp as HWND, byval nWidth as integer )
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return
     if nWidth < 0 then nWidth = 0
     if nWidth = pScp->ScrollBarWidth then return
     pScp->ScrollBarWidth = nWidth
-    CScrollPanel_PositionWindows( hScp )    ' the page's width changed with the strip
+    PsScrollPanel_PositionWindows( hScp )    ' the page's width changed with the strip
 end sub
 
 
-sub CScrollPanel_SetLineHeight( byval hScp as HWND, byval nHeight as integer )
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+sub PsScrollPanel_SetLineHeight( byval hScp as HWND, byval nHeight as integer )
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return
     if nHeight < 1 then nHeight = 1
     pScp->LineHeight = nHeight
@@ -837,8 +837,8 @@ end sub
 
 ' Applied to every existing child of the page. The HOST keeps ownership of the HFONT -- this
 ' control never deletes it, and a font passed here must outlive the page.
-sub CScrollPanel_SetFont( byval hScp as HWND, byval hFont as HFONT )
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+sub PsScrollPanel_SetFont( byval hScp as HWND, byval hFont as HFONT )
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return
     if pScp->hPanel = 0 then return
 
@@ -853,22 +853,22 @@ end sub
 ' ========================================================================================
 ' Behaviour and state.
 ' ========================================================================================
-sub CScrollPanel_SetAutoScrollToFocus( byval hScp as HWND, byval bEnable as boolean )
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+sub PsScrollPanel_SetAutoScrollToFocus( byval hScp as HWND, byval bEnable as boolean )
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return
     pScp->bAutoScrollToFocus = bEnable
 end sub
 
 
-function CScrollPanel_GetAutoScrollToFocus( byval hScp as HWND ) as boolean
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+function PsScrollPanel_GetAutoScrollToFocus( byval hScp as HWND ) as boolean
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return false
     return pScp->bAutoScrollToFocus
 end function
 
 
-function CScrollPanel_IsThumbVisible( byval hScp as HWND ) as boolean
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+function PsScrollPanel_IsThumbVisible( byval hScp as HWND ) as boolean
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return false
     return pScp->bThumbShown
 end function
@@ -877,30 +877,30 @@ end function
 ' ========================================================================================
 ' Callbacks.
 ' ========================================================================================
-sub CScrollPanel_SetPaintCallback( byval hScp as HWND, byval usersub as SCP_PaintCallbackSub )
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+sub PsScrollPanel_SetPaintCallback( byval hScp as HWND, byval usersub as SCP_PaintCallbackSub )
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return
     pScp->PaintCallback = usersub
     InvalidateRect( pScp->hPanel, NULL, FALSE )
 end sub
 
 
-sub CScrollPanel_SetMessageCallback( byval hScp as HWND, byval userfunc as SCP_MessageCallbackFunc )
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+sub PsScrollPanel_SetMessageCallback( byval hScp as HWND, byval userfunc as SCP_MessageCallbackFunc )
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return
     pScp->MessageCallback = userfunc
 end sub
 
 
-sub CScrollPanel_SetLayoutCallback( byval hScp as HWND, byval userfunc as SCP_LayoutCallbackFunc )
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+sub PsScrollPanel_SetLayoutCallback( byval hScp as HWND, byval userfunc as SCP_LayoutCallbackFunc )
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return
     pScp->LayoutCallback = userfunc
 end sub
 
 
-sub CScrollPanel_SetScrollCallback( byval hScp as HWND, byval usersub as SCP_ScrollCallbackSub )
-    dim as CSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
+sub PsScrollPanel_SetScrollCallback( byval hScp as HWND, byval usersub as SCP_ScrollCallbackSub )
+    dim as PSSCROLLPANEL ptr pScp = GetScrollPanelPointer(hScp)
     if pScp = 0 then return
     pScp->ScrollCallback = usersub
 end sub
