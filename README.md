@@ -588,3 +588,17 @@ Everything you put *on* the page is yours to choose. Plain Win32 `STATIC`, `BUTT
 controls work without any special handling — the control themes them through `WM_CTLCOLOR*` and
 forwards their notifications to your form. Owner-drawn controls work equally well, since the
 page is an ordinary parent window.
+
+## Licence
+
+[Mozilla Public License 2.0](LICENSE).
+
+MPL-2.0 is file-level copyleft, chosen deliberately for a drop-in control:
+
+- **You may use this in closed-source software**, commercial or otherwise.
+  §3.2 permits static linking with no additional conditions.
+- **If you modify these files, publish those files' changes.** The obligation is
+  per-file — your own sources are unaffected however tightly they are combined
+  with these.
+- The Exhibit B "Incompatible With Secondary Licenses" notice is **not applied**,
+  which keeps this GPL-compatible.
